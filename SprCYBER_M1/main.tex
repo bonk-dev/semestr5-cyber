@@ -1,0 +1,190 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage{lmodern}
+\selectlanguage{polish}
+\usepackage{graphicx}
+\usepackage{biblatex}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\addbibresource{bib.bib}
+\setlength{\emergencystretch}{1.5em} % mniej wystających linii
+% Łamanie długich adresów URL w bibliografii
+\setcounter{biburllcpenalty}{7000}
+\setcounter{biburlucpenalty}{8000}
+
+\begin{document}
+
+\pagenumbering{gobble}
+\clearpage
+\begin{figure}[h]
+\centering
+\includegraphics{media/ps-logo.png}
+\end{figure}
+\hspace{3cm}
+\begin{center}Sprawozdanie z modułu nr 1\end{center}
+\begin{center}CYBER 2026/2027\end{center}
+\hspace{3cm}
+\begin{center}\large\textbf{Cyberbezpieczeństwo}\end{center}
+\hspace{7cm}
+\begin{center}Credential stuffing -- przejmowanie kont
+z użyciem danych uwierzytelniających z wycieków\end{center}
+\begin{flushright}Kierunek: Informatyka
+\end{flushright}
+\begin{flushright}Członkowie zespołu:
+\par
+\textit{Dawid Pągowski}
+\par
+\textit{Bartłomiej Łokaj}
+\par
+\textit{Paweł Świderski}
+\end{flushright}
+\vfill
+\begin{center}Gliwice, 2026/2027\end{center}
+
+\newpage
+\pagenumbering{arabic}
+\tableofcontents
+
+\newpage
+\section{Wprowadzenie}
+
+\subsection{Założenia dot. zadania laboratoryjnego}
+Celem laboratorium jest analiza cyberzagrożenia credential stuffingu, czyli wykorzystywania wykradzionych poświadczeń (np. z wycieków) do nieautoryzowanego logowania na konta ofiar. Zagrożenie to zalicza się do kategorii \textit{przejęcie konta}.
+
+\subsection{Uzasadnienie wyboru}
+
+\begin{itemize}
+    \item skala -- dodatkowe badania do raportu Verizon DBIR 2025 wskazują, że w logach dostawców usług SSO w medianie 19\% dziennych prób uwierzytelnienia wynikało z credential stuffingu. Ponadto w medianie tylko 49\% zapisanych haseł użytkownika było unikalnych, a pozostałe powtarzały się w różnych serwisach -- to właśnie wykorzystuje credential stuffing~\cite{verizon2025}.
+    \item dobrze udokumentowane przypadki -- cyberzagrożenie jest opisane przez MITRE i OWASP~\cite{mitre_t1110004,owasp_cs}.
+\end{itemize}
+
+\subsection{Zakres pracy}
+
+Sprawozdanie obejmuje: definicję zagrożenia i jego umiejscowienie w~podstawowych pojęciach bezpieczeństwa, opis mechanizmu ataku wraz z odniesieniem do macierzy MITRE ATT\&CK, analizę rzeczywistego incydentu (23andMe, 2023), ocenę skutków w~modelu CIA, metody wykrywania oraz rekomendowane zabezpieczenia. Praca opiera się wyłącznie na publicznie dostępnych źródłach; nie przeprowadzaliśmy żadnych testów na cudzych systemach.
+
+\newpage
+
+\section{Rozwinięcie}
+
+\subsection{Definicja}
+
+OWASP definiuje credential stuffing jako zautomatyzowane wstrzykiwanie skradzionych poświadczeń (par nazw użytkowników i haseł) do formularzy logowania w celu uzyskania nieautoryzowanego dostępu do kont~\cite{owasp_cs}.
+
+Wyraźnie określa też credential stuffing jako podzbiór kategorii ataków brute force~\cite{owasp_cs}. Klasyczny atak brute force polega na zgadywaniu kolejnych kombinacji, a credential stuffing polega na próbowaniu \textbf{wyłącznie} znanych poświadczeń.
+
+\subsection{Zagrożenie, podatność, incydent i ryzyko}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Pojęcie} & \textbf{Odniesienie do credential stuffingu} \\
+\midrule
+Zagrożenie & Zautomatyzowane próby logowania danymi z wycieków, prowadzone na dużą skalę. \\
+Podatność & Używanie tych samych haseł w wielu serwisach, brak uwierzytelniania wieloskładnikowego, brak ograniczeń liczby prób logowania. Jest to słabość procesu i konfiguracji, a nie błąd w kodzie. \\
+Incydent & Udane zalogowanie się atakującego na konto ofiary, a w konsekwencji dostęp do jej danych lub wykonywanie operacji w jej imieniu. \\
+Ryzyko & Wysokie prawdopodobieństwo (tanie i łatwo dostępne listy poświadczeń, automatyzacja) połączone ze skutkami zależnymi od wartości danych dostępnych z poziomu konta. \\
+\bottomrule
+\end{tabularx}
+\caption{Credential stuffing w ujęciu podstawowych pojęć bezpieczeństwa}
+\end{table}
+
+\subsection{Mechanizm}
+
+\begin{enumerate}
+    \item Atakujący pozyskuje poświadczenia z dowolnego źródła: publiczne i niepubliczne wycieki, kampanie phishingowe, złośliwe oprogramowanie typu infostealer itd.~\cite{owasp_cs,hns_okta2024}.
+    \item Atakujący wykorzystuje skradzione dane do masowych, zautomatyzowanych prób logowania na wielu różnych serwisach~\cite{owasp_cs}.
+    \item Aby uniknąć blokad opartych na adresie IP, atakujący rozprasza ruch, np. przez sieć TOR lub proxy rezydencjalne, dzięki którym żądania wyglądają jak ruch zwykłych użytkowników domowych~\cite{hns_okta2024}.
+    \item Pomyślne zalogowanie pozwala atakującemu wykorzystać konto i namierzyć kolejne ofiary lub okazje do ataków.
+\end{enumerate}
+
+Oprócz logowania się za pomocą poświadczeń, atakujący może również wykorzystać dane potrzebne do resetowania haseł: np. odpowiedzi na pytania zabezpieczające, numery telefonów, dane osobowe i inne~\cite{owasp_cs}.
+
+\subsection{Potencjalne cele}
+Cele można rozróżnić na użytkowników (bezpośrednie ofiary) i typy usług. W grupie użytkowników są to osoby korzystające z tych samych loginów i haseł w wielu miejscach. Do potencjalnych celów-usług należą wszystkie serwisy i aplikacje, które udostępniają publiczne formularze logowania~\cite{mitre_t1110004}.
+
+\subsection{Porównanie z~pokrewnymi atakami}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Atak} & \textbf{Co jest testowane} & \textbf{Źródło haseł} \\
+\midrule
+Brute force & Wiele haseł dla jednego konta & Słownik lub generowanie kombinacji \\
+Password spraying & Jedno popularne hasło dla wielu kont & Listy najczęstszych haseł \\
+Credential stuffing & Konkretne pary login--hasło & Wycieki z innych serwisów \\
+\bottomrule
+\end{tabularx}
+\caption{Credential stuffing na tle pokrewnych ataków (opracowanie na podstawie~\cite{owasp_cheatsheet})}
+\end{table}
+
+\subsection{Macierz MITRE ATT\&CK}
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{5.6cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Taktyka} & \textbf{Technika} & \textbf{Etap ataku} \\
+\midrule
+Reconnaissance & T1589.001 Gather Victim Identity Information: Credentials &
+  Pozyskanie poświadczeń (etap 1) \\
+Credential Access & T1110.004 Brute Force: Credential Stuffing &
+  Masowe próby logowania (etap 2) \\
+Command and Control & T1090.002 External Proxy, T1090.003 Multi-hop Proxy &
+  Ukrywanie ruchu przez proxy rezydencjalne i TOR (etap 3) \\
+Initial Access / Persistence & T1078 Valid Accounts &
+  Korzystanie z~przejętych kont (etap 4) \\
+\bottomrule
+\end{tabularx}
+\caption{Mapowanie etapów ataku na taktyki i~techniki MITRE ATT\&CK (opracowanie na podstawie~\cite{mitre_t1110004})}
+\end{table}
+
+Centralna jest technika T1110.004 z taktyki \emph{Credential Access}. Pozostałe pozycje opisują działania przed atakiem i po nim, co pokazuje, że credential stuffing jest zwykle jednym z etapów dłuższego łańcucha, a nie celem samym w sobie.
+
+\subsection{Scenariusz ataku i przykład: 23andMe (2023)}
+TODO (osoba 2):
+- opisac 23andMe: zasob -> sposbo wejscia -> dzialanie atakujacego -> skutek -> wykrycie -> reakcja
+- nalezy pamietac o podaniu źródel bo na platfomie pisali zeby podawać pozdrawiam
+
+\subsection{Skutki}
+TODO (osoba 2):
+- ocena w modelu CIA (poufność, integralnosc, dostpenosc)
+- skutki techniczne, organizacyjne, finansowe, prawne, wizerunkowe
+
+\subsection{Sposoby wykrywania}
+TODO (osoba 3):
+- oznaki w logach: duza liczba nieudanych zalgoowan na wiele kont z wiel uadreow iP
+- ruch z seici anonimizujacych (np TOR)
+- anomalie w zachowaniu klietna (MITRE T1110.004)
+
+\subsection{Sposoby ograniczenia ryzyka}
+TODO (osoba 3):
+- zapobieganie (MFA, sprawdzanie hasel w bazach wycieków)
+- reakcja: wymuszenie zmiany hasla, uniewaznienies sesji, powiadomienie userów
+
+\newpage
+
+\section{Podsumowanie i wnioski}
+
+TODO (osoba 3):
+- najwazniejsze ustalenia
+- ocena skutecznosci zabezpieczen
+- ktory etap najlatwiej przerwac
+- ktore zabezpieczenie daje najwiekszy efekt
+- jak sprawdzic czy ochrona dziala
+
+\newpage
+\section{Spis literatury}
+
+\printbibliography[heading=none]
+
+\end{document}
