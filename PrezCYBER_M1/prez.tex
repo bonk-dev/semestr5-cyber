@@ -1,0 +1,327 @@
+\documentclass[aspectratio=169,xcolor=dvipsnames]{beamer}
+\usetheme{Simple}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{CyberRed}{HTML}{B42332}
+\definecolor{CyberBurgundy}{HTML}{7F1D1D}
+\definecolor{CyberLight}{HTML}{FCE8EA}
+\definecolor{CyberText}{HTML}{292525}
+
+\setbeamercolor{normal text}{fg=CyberText,bg=white}
+\setbeamercolor{structure}{fg=CyberRed}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{subtitle}{fg=white}
+\setbeamercolor{frametitle}{fg=CyberBurgundy,bg=white}
+\setbeamercolor{section in toc}{fg=CyberBurgundy}
+\setbeamercolor{item}{fg=CyberRed}
+\setbeamercolor{subitem}{fg=CyberRed}
+\setbeamercolor{enumerate item}{fg=CyberRed}
+\setbeamercolor{alerted text}{fg=CyberRed}
+\setbeamercolor{block title}{fg=white,bg=CyberBurgundy}
+\setbeamercolor{block body}{fg=CyberText,bg=CyberLight}
+\setbeamercolor{block title alerted}{fg=white,bg=CyberRed}
+\setbeamercolor{block body alerted}{fg=CyberText,bg=CyberLight}
+\setbeamercolor{block title example}{fg=white,bg=CyberBurgundy}
+\setbeamercolor{block body example}{fg=CyberText,bg=CyberLight}
+\setbeamercolor{palette primary}{fg=white,bg=CyberRed}
+\setbeamercolor{palette secondary}{fg=white,bg=CyberBurgundy}
+\setbeamercolor{palette tertiary}{fg=white,bg=CyberBurgundy}
+\setbeamercolor{footline}{fg=CyberBurgundy,bg=white}
+\setbeamercolor{navigation symbols}{fg=CyberRed}
+\hypersetup{colorlinks=true,urlcolor=CyberRed,linkcolor=CyberBurgundy,citecolor=CyberRed}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+% Etykieta prowadzącego slajd (prawy górny róg)
+\newcommand{\kto}[1]{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=north east,fill=CyberLight,text=CyberBurgundy,font=\scriptsize\bfseries,
+          rounded corners=2pt,inner sep=3pt] at ([xshift=-3mm,yshift=-3mm]current page.north east) {#1};
+  \end{tikzpicture}}
+
+% Ramka na slajdy do uzupełnienia — usunąć przed prezentacją
+\newcommand{\dozrobienia}[1]{%
+  \begin{alertblock}{Do uzupełnienia}
+    \small #1
+  \end{alertblock}}
+
+\title[Credential stuffing]{Credential stuffing}
+\subtitle{Przejmowanie kont z użyciem danych uwierzytelniających z wycieków\\Moduł 1: Cyberzagrożenia}
+\author[Pągowski, Łokaj, Świderski]{Dawid Pągowski \and Bartłomiej Łokaj \and Paweł Świderski}
+\institute[PŚ]{Wydział Matematyki Stosowanej\\Politechnika Śląska}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{Plan prezentacji}
+    \tableofcontents
+\end{frame}
+
+% =====================================================================
+% OSOBA 1 — Dawid Pągowski
+% =====================================================================
+\section{Wprowadzenie}
+\begin{frame}{Cel i zakres analizy}
+    \kto{Dawid Pągowski}
+    \begin{itemize}
+        \item \textbf{Credential stuffing} --- wykorzystywanie wykradzionych poświadczeń
+              (np.\ z wycieków) do nieautoryzowanego logowania na konta ofiar.
+        \item Kategoria zagrożenia: \textbf{przejęcie konta}.
+        \item Zakres:
+        \begin{itemize}
+            \item definicja i mechanizm, odniesienie do MITRE ATT\&CK
+            \item przykład: incydent 23andMe (2023) i skutki w modelu CIA
+            \item wykrywanie i zabezpieczenia
+        \end{itemize}
+        \item Tylko źródła publiczne --- bez testów na cudzych systemach.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Dlaczego ten temat?}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \centering
+        {\Huge\bfseries\color{CyberRed} 19\%}\\[0.1cm]
+        \small dziennych prób uwierzytelnienia w logach SSO to credential stuffing
+        (mediana)~\cite{verizon}
+        \column{0.48\textwidth}
+        \centering
+        {\Huge\bfseries\color{CyberRed} 49\%}\\[0.1cm]
+        \small tyle zapisanych haseł użytkownika jest unikalnych (mediana) ---
+        reszta powtarza się w różnych serwisach~\cite{verizon}
+    \end{columns}
+    \vspace{0.8cm}
+    \begin{itemize}
+        \item Zagrożenie dobrze udokumentowane przez MITRE i OWASP~\cite{mitre,owasp}.
+    \end{itemize}
+\end{frame}
+
+\section{Mechanizm}
+\begin{frame}{Czym jest credential stuffing?}
+    \kto{Dawid Pągowski}
+    \begin{block}{Definicja (OWASP)}
+        Zautomatyzowane wstrzykiwanie skradzionych poświadczeń (par login--hasło)
+        do formularzy logowania w celu uzyskania nieautoryzowanego dostępu do kont~\cite{owasp}.
+    \end{block}
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item Podzbiór ataków \textbf{brute force}~\cite{owasp}.
+        \item Brute force zgaduje kolejne kombinacje --- credential stuffing próbuje
+              \textbf{wyłącznie znanych} poświadczeń.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Zagrożenie, podatność, incydent, ryzyko}
+    \kto{Dawid Pągowski}
+    \small
+    \begin{tabular}{@{}lp{0.78\textwidth}@{}}
+        \toprule
+        \textbf{Zagrożenie} & zautomatyzowane próby logowania danymi z wycieków na dużą skalę \\
+        \textbf{Podatność} & te same hasła w wielu serwisach, brak MFA, brak limitów prób
+                             --- słabość procesu i konfiguracji, nie błąd w kodzie \\
+        \textbf{Incydent} & udane zalogowanie atakującego na konto ofiary \\
+        \textbf{Ryzyko} & wysokie prawdopodobieństwo (tanie listy poświadczeń, automatyzacja)
+                          $\times$ wartość danych dostępnych z konta \\
+        \bottomrule
+    \end{tabular}
+\end{frame}
+
+\begin{frame}{Przebieg ataku}
+    \kto{Dawid Pągowski}
+    \centering
+    \begin{tikzpicture}[
+        etap/.style={draw=CyberBurgundy,fill=CyberLight,rounded corners=3pt,
+                     minimum height=2cm,align=center,
+                     font=\footnotesize,text width=3cm,
+                     execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+        strz/.style={-{Stealth[length=2.5mm]},thick,CyberRed},
+        node distance=0.35cm]
+        \node[etap] (a) {\textbf{1. Pozyskanie}\\wycieki, phishing, infostealery};
+        \node[etap,right=of a] (b) {\textbf{2. Masowe logowanie}\\automatyczne próby na wielu serwisach};
+        \node[etap,right=of b] (c) {\textbf{3. Ukrycie ruchu}\\TOR, proxy rezydencjalne};
+        \node[etap,right=of c] (d) {\textbf{4. Wykorzystanie}\\przejęte konto, kolejne ofiary};
+        \draw[strz] (a) -- (b); \draw[strz] (b) -- (c); \draw[strz] (c) -- (d);
+    \end{tikzpicture}
+    \vspace{0.5cm}
+
+    \raggedright\small
+    \begin{itemize}
+        \item Ruch przez proxy rezydencjalne wygląda jak zwykli użytkownicy domowi,
+              więc blokady IP niewiele dają~\cite{okta}.
+        \item Atakujący może też użyć danych do \textbf{resetu hasła}: odpowiedzi na pytania
+              zabezpieczające, numery telefonów, dane osobowe~\cite{owasp}.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Potencjalne cele}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \begin{block}{Użytkownicy}
+            Osoby używające tych samych loginów i haseł w wielu miejscach.
+        \end{block}
+        \column{0.48\textwidth}
+        \begin{block}{Usługi}
+            Wszystkie serwisy i aplikacje z publicznym formularzem logowania~\cite{mitre}.
+        \end{block}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Na tle pokrewnych ataków}
+    \kto{Dawid Pągowski}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Atak} & \textbf{Co jest testowane} & \textbf{Źródło haseł} \\
+            \midrule
+            Brute force & wiele haseł, jedno konto & słownik / kombinacje \\
+            Password spraying & jedno hasło, wiele kont & najpopularniejsze hasła \\
+            \textbf{Credential stuffing} & \textbf{konkretne pary login--hasło} & \textbf{wycieki z innych serwisów} \\
+            \bottomrule
+        \end{tabular}
+        \caption{Na podstawie OWASP~\cite{owaspcs}}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Macierz MITRE ATT\&CK}
+    \kto{Dawid Pągowski}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Taktyka} & \textbf{Technika} & \textbf{Etap} \\
+            \midrule
+            Reconnaissance & T1589.001 Credentials & 1. Pozyskanie \\
+            \textbf{Credential Access} & \textbf{T1110.004 Credential Stuffing} & \textbf{2. Masowe logowanie} \\
+            Command and Control & T1090.002 / T1090.003 Proxy & 3. Ukrycie ruchu \\
+            Initial Access / Persistence & T1078 Valid Accounts & 4. Wykorzystanie \\
+            \bottomrule
+        \end{tabular}
+        \caption{Na podstawie MITRE ATT\&CK~\cite{mitre}}
+    \end{table}
+    \small Credential stuffing to zwykle \textbf{jeden etap dłuższego łańcucha}, a nie cel sam w sobie.
+\end{frame}
+
+% =====================================================================
+% OSOBA 2 — przykład i skutki
+% =====================================================================
+\section{Przykład i skutki}
+\begin{frame}{Przykład: 23andMe (2023)}
+    \kto{Osoba 2}
+    \dozrobienia{Przebieg incydentu według sekwencji: zasób $\rightarrow$ wejście
+    $\rightarrow$ działanie $\rightarrow$ skutek $\rightarrow$ wykrycie $\rightarrow$ reakcja.
+    Kluczowe liczby (zweryfikowane!) i rola funkcji łączenia krewnych. Dobrze sprawdzi się
+    oś czasu.}
+\end{frame}
+
+\begin{frame}{Skutki w modelu CIA}
+    \kto{Osoba 2}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lll}
+            \toprule
+            \textbf{Właściwość} & \textbf{Naruszona?} & \textbf{Uzasadnienie} \\
+            \midrule
+            Poufność & Uzupełnij & Uzupełnij \\
+            Integralność & Uzupełnij & Uzupełnij \\
+            Dostępność & Uzupełnij & Uzupełnij \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    \dozrobienia{Skutki finansowe, prawne (RODO, kara ICO) i wizerunkowe.}
+\end{frame}
+
+% =====================================================================
+% OSOBA 3 — wykrywanie, zabezpieczenia, wnioski
+% =====================================================================
+\section{Wykrywanie i zabezpieczenia}
+\begin{frame}{Jak wykryć atak?}
+    \kto{Osoba 3}
+    \dozrobienia{Sygnały w logach: wiele nieudanych logowań na wiele kont, wiele adresów IP,
+    nietypowe lokalizacje, ruch z sieci anonimizujących.}
+\end{frame}
+
+\begin{frame}{Proponowane zabezpieczenia}
+    \kto{Osoba 3}
+    \begin{columns}[T]
+        \column{0.32\textwidth}
+        \textbf{Zapobieganie}
+        \begin{itemize}\small
+            \item Uzupełnij
+        \end{itemize}
+        \column{0.32\textwidth}
+        \textbf{Detekcja}
+        \begin{itemize}\small
+            \item Uzupełnij
+        \end{itemize}
+        \column{0.32\textwidth}
+        \textbf{Reakcja}
+        \begin{itemize}\small
+            \item Uzupełnij
+        \end{itemize}
+    \end{columns}
+    \vspace{0.3cm}
+    \dozrobienia{MFA, sprawdzanie haseł w bazach wycieków, limity prób, CAPTCHA,
+    menedżery haseł; reakcja: reset haseł, unieważnienie sesji, powiadomienie użytkowników.}
+\end{frame}
+
+\section{Wnioski}
+\begin{frame}{Wnioski zespołu}
+    \kto{Osoba 3 + zespół}
+    \begin{enumerate}
+        \item Który etap ataku najłatwiej przerwać?
+        \item Które zabezpieczenie daje największy efekt?
+        \item Jak sprawdzić, czy ochrona działa?
+        \item Jakie są ograniczenia naszej analizy?
+    \end{enumerate}
+    \dozrobienia{Odpowiedzi na powyższe pytania i rekomendacje zespołu.}
+\end{frame}
+
+\section{Źródła}
+\begin{frame}{Bibliografia}
+    \scriptsize
+    \begin{thebibliography}{99}
+        \bibitem{owasp} OWASP Foundation, \emph{Credential stuffing},
+            \url{https://owasp.org/www-community/attacks/Credential_stuffing}.
+        \bibitem{owaspcs} OWASP Foundation, \emph{Credential Stuffing Prevention Cheat Sheet},
+            \url{https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html}.
+        \bibitem{mitre} MITRE, \emph{ATT\&CK: Brute Force: Credential Stuffing (T1110.004)},
+            \url{https://attack.mitre.org/techniques/T1110/004/}.
+        \bibitem{verizon} P.~Langlois, \emph{Additional 2025 DBIR research on credential stuffing},
+            Verizon Business, 2025.
+        \bibitem{okta} Help Net Security, \emph{Okta warns customers about credential stuffing
+            onslaught}, 29.04.2024.
+        % TODO osoba 2 i 3: dopisać swoje źródła
+    \end{thebibliography}
+\end{frame}
+
+\begin{frame}{Pytania i dyskusja}
+    \centering
+    {\LARGE\color{CyberBurgundy} Pytania?}
+    \vspace{0.6cm}
+
+    {\large Zapraszamy do dyskusji.}
+    % tak naprawde to nie
+\end{frame}
+
+\begin{frame}[plain]
+    \centering
+    {\Huge\bfseries\color{CyberRed} Dziękujemy!}
+\end{frame}
+
+\end{document}
