@@ -1,0 +1,68 @@
+# Pliki pomocnicze LaTeX
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.lb
+
+# Bibliografia (biber / bibtex)
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*-blx.aux
+*-blx.bib
+
+# Beamer
+*.nav
+*.snm
+*.vrb
+
+# latexmk / build
+*.fdb_latexmk
+*.synctex
+*.synctex.gz
+*.synctex(busy)
+*.pdfsync
+build/
+out/
+
+# Inne pakiety
+*.xdv
+*-converted-to.*
+*.ent
+*.idx
+*.ilg
+*.ind
+*.glo
+*.gls
+*.glg
+*.ist
+*.acn
+*.acr
+*.alg
+*.loa
+*.thm
+*.mw
+_minted*/
+*.pyg
+
+# Edytory i system
+*.bak
+*.sav
+*~
+*.swp
+.DS_Store
+.vscode/
+*.tps
+*.backup
+
+# Wygenerowane PDF-y (usuń tę linię, jeśli PDF ma być w repo)
+*.pdf
