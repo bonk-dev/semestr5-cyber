@@ -220,30 +220,44 @@
 % OSOBA 2 — przykład i skutki
 % =====================================================================
 \section{Przykład i skutki}
+
 \begin{frame}{Przykład: 23andMe (2023)}
-    \kto{Osoba 2}
-    \dozrobienia{Przebieg incydentu według sekwencji: zasób $\rightarrow$ wejście
-    $\rightarrow$ działanie $\rightarrow$ skutek $\rightarrow$ wykrycie $\rightarrow$ reakcja.
-    Kluczowe liczby (zweryfikowane!) i rola funkcji łączenia krewnych. Dobrze sprawdzi się
-    oś czasu.}
+    \kto{Paweł Świderski}
+    \small
+    \begin{itemize}
+        \item \textbf{Zasób:} Baza kont użytkowników oraz funkcja \textit{DNA Relatives} (łączenie krewnych).
+        \item \textbf{Wejście:} Atak \textit{credential stuffing} (użycie haseł z wycieków w innych serwisach).
+        \item \textbf{Działanie:} Przejęcie ok. 14 tys. kont i masowe pobieranie danych połączonych krewnych (głównie osób pochodzenia żydowskiego i chińskiego).
+        \item \textbf{Skutek:} Wyciek profili ok. \textbf{6,9 mln} osób (drzewa genealogiczne, pochodzenie, stopień pokrewieństwa).
+        \item \textbf{Wykrycie:} Październik 2023 r. – publikacja próbek danych na forach hakerskich.
+        \item \textbf{Reakcja:} Wymuszony reset haseł, obowiązkowe uwierzytelnianie 2FA, ugody sądowe.
+    \end{itemize}
 \end{frame}
 
 \begin{frame}{Skutki w modelu CIA}
-    \kto{Osoba 2}
+    \kto{Paweł Świderski}
     \begin{table}
         \centering
-        \small
-        \begin{tabular}{lll}
+        \footnotesize
+        \begin{tabular}{p{2cm} p{2cm} p{6cm}}
             \toprule
             \textbf{Właściwość} & \textbf{Naruszona?} & \textbf{Uzasadnienie} \\
             \midrule
-            Poufność & Uzupełnij & Uzupełnij \\
-            Integralność & Uzupełnij & Uzupełnij \\
-            Dostępność & Uzupełnij & Uzupełnij \\
+            Poufność & \textbf{Tak} & Ujawnienie danych osobowych i genetycznych 6,9 mln osób. \\
+            Integralność & \textbf{Nie} & Dane nie zostały zmodyfikowane w bazie (jedynie skopiowane). \\
+            Dostępność & \textbf{Nie} & Serwis działał bez zakłóceń (brak ataku DoS/Ransomware). \\
             \bottomrule
         \end{tabular}
     \end{table}
-    \dozrobienia{Skutki finansowe, prawne (RODO, kara ICO) i wizerunkowe.}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textbf{Pozostałe konsekwencje:}
+    \begin{itemize}
+        \item \textbf{Finansowe:} Spadek akcji o ponad 90\% (widmo bankructwa), ugoda w USA na 30 mln USD.
+        \item \textbf{Prawne:} Naruszenie RODO/UK GDPR, dochodzenia i wielomilionowe kary od regulatorów (np. brytyjskiego ICO).
+        \item \textbf{Wizerunkowe:} Trwała utrata zaufania klientów do bezpieczeństwa danych genetycznych.
+    \end{itemize}
 \end{frame}
 
 % =====================================================================
@@ -306,6 +320,10 @@
             Verizon Business, 2025.
         \bibitem{okta} Help Net Security, \emph{Okta warns customers about credential stuffing
             onslaught}, 29.04.2024.
+        \bibitem{wiki23} Wikipedia, \emph{23andMe data leak}, 
+            \url{https://en.wikipedia.org/wiki/23andMe_data_leak}.
+        \bibitem{sec23} U.S. Securities and Exchange Commission (SEC), \emph{23andMe Holding Co. Form 8-K}, 
+            \url{https://www.sec.gov/Archives/edgar/data/1804591/000119312523253488/d520529d8k.htm}.
         % TODO osoba 2 i 3: dopisać swoje źródła
     \end{thebibliography}
 \end{frame}
