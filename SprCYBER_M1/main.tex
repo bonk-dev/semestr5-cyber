@@ -161,26 +161,111 @@ TODO (osoba 2):
 - skutki techniczne, organizacyjne, finansowe, prawne, wizerunkowe
 
 \subsection{Sposoby wykrywania}
-TODO (osoba 3):
-- oznaki w logach: duza liczba nieudanych zalgoowan na wiele kont z wiel uadreow iP
-- ruch z seici anonimizujacych (np TOR)
-- anomalie w zachowaniu klietna (MITRE T1110.004)
+
+Wykrywanie credential stuffingu polega przede wszystkim na analizie logów uwierzytelniania oraz identyfikowaniu nietypowych wzorców ruchu sieciowego i zachowania użytkowników. Ponieważ atak jest często zautomatyzowany i rozproszony pomiędzy wiele adresów IP, samo monitorowanie liczby prób logowania z pojedynczego źródła może być niewystarczające~\cite{owasp_cs,mitre_t1110004}.
+
+Do najważniejszych oznak wskazujących na możliwość występowania credential stuffingu należą:
+
+\begin{itemize}
+    \item \textbf{Duża liczba nieudanych prób logowania} -- wiele nieudanych prób uwierzytelnienia w krótkim czasie, skierowanych do różnych kont użytkowników. Charakterystyczne jest również występowanie prób z wielu adresów IP, co może wskazywać na rozproszony charakter ataku.
+
+    \item \textbf{Nietypowe źródła ruchu} -- logowania pochodzące z adresów IP powiązanych z sieciami anonimizującymi, takimi jak TOR, serwerami proxy lub centrami danych. Nie jest to jednak jednoznaczny dowód ataku, ponieważ z takich usług mogą korzystać również zwykli użytkownicy.
+
+    \item \textbf{Anomalie w zachowaniu użytkowników} -- logowania z nietypowych lokalizacji, urządzeń lub w godzinach odbiegających od normalnej aktywności danego konta. Podejrzane mogą być również krótkie odstępy pomiędzy kolejnymi próbami logowania z różnych lokalizacji.
+
+    \item \textbf{Nietypowy stosunek udanych do nieudanych logowań} -- nagły wzrost liczby poprawnych uwierzytelnień po serii nieudanych prób może wskazywać na odnalezienie prawidłowych poświadczeń.
+
+    \item \textbf{Wiele kont powiązanych z jednym wzorcem aktywności} -- podobne charakterystyki żądań, np. identyczne nagłówki HTTP, schematy czasowe lub wykorzystywane urządzenia, mogą wskazywać na użycie wspólnego narzędzia automatyzującego.
+\end{itemize}
+
+Przykładowo, jeżeli w krótkim czasie na kilkadziesiąt różnych kont kierowane są próby logowania z wielu adresów IP, a część z nich kończy się sukcesem, system monitorujący powinien potraktować takie zdarzenie jako potencjalny atak.
+
+W praktyce wykrywanie można realizować za pomocą systemów SIEM (Security Information and Event Management), które gromadzą i korelują logi z różnych źródeł. Uzupełnieniem są mechanizmy UEBA (User and Entity Behavior Analytics), analizujące typowe zachowania użytkowników i wykrywające odstępstwa od ustalonych wzorców~\cite{owasp_cs,mitre_t1110004}.
+
+Należy pamiętać, że pojedynczy wskaźnik nie przesądza o wystąpieniu ataku. Najskuteczniejsze jest łączenie kilku sygnałów, takich jak liczba prób logowania, różnorodność adresów IP, charakterystyka urządzeń oraz nietypowe zachowanie kont.
 
 \subsection{Sposoby ograniczenia ryzyka}
-TODO (osoba 3):
-- zapobieganie (MFA, sprawdzanie hasel w bazach wycieków)
-- reakcja: wymuszenie zmiany hasla, uniewaznienies sesji, powiadomienie userów
+
+Ograniczanie ryzyka credential stuffingu powinno obejmować zarówno działania zapobiegawcze, jak i procedury reagowania na wykryty incydent. Najważniejsze jest utrudnienie wykorzystania skradzionych poświadczeń oraz ograniczenie skutków ewentualnego przejęcia konta.
+
+\textbf{Działania zapobiegawcze:}
+
+\begin{itemize}
+    \item \textbf{Uwierzytelnianie wieloskładnikowe (MFA)} -- wymaga od użytkownika potwierdzenia tożsamości za pomocą dodatkowego składnika, np. aplikacji uwierzytelniającej, klucza sprzętowego lub mechanizmu passkeys. Nawet jeśli atakujący posiada prawidłowe hasło, nie musi to wystarczyć do uzyskania dostępu do konta. Szczególnie zalecane są odporne na phishing metody MFA, np. klucze FIDO2~\cite{owasp_mfa}.
+
+    \item \textbf{Sprawdzanie haseł w bazach wycieków} -- podczas rejestracji i zmiany hasła system powinien sprawdzać, czy wybrane hasło nie występuje w znanych zbiorach skompromitowanych poświadczeń. Hasła znajdujące się w takich bazach powinny być odrzucane~\cite{nist80063b}.
+
+    \item \textbf{Ograniczanie liczby prób logowania} -- stosowanie mechanizmów rate limiting, opóźnień pomiędzy kolejnymi próbami oraz czasowych blokad ogranicza możliwość masowego testowania poświadczeń. Ograniczenia powinny uwzględniać nie tylko adres IP, ale również konto i inne charakterystyki żądań.
+
+    \item \textbf{Wykrywanie podejrzanych logowań} -- analizowanie lokalizacji, urządzeń i wzorców aktywności użytkownika pozwala identyfikować nietypowe próby dostępu. W przypadku wykrycia ryzyka system może zażądać dodatkowego uwierzytelnienia.
+
+    \item \textbf{Bezpieczne przechowywanie haseł} -- hasła użytkowników powinny być przechowywane w postaci skrótów kryptograficznych z wykorzystaniem odpowiednich algorytmów przeznaczonych do tego celu, np. Argon2id. Ogranicza to skutki ewentualnego wycieku bazy danych.
+
+    \item \textbf{Edukacja użytkowników} -- należy informować o ryzyku ponownego wykorzystywania tych samych haseł w różnych serwisach oraz zachęcać do korzystania z menedżerów haseł.
+\end{itemize}
+
+\textbf{Działania podejmowane po wykryciu incydentu:}
+
+\begin{enumerate}
+    \item \textbf{Zabezpieczenie konta} -- wymuszenie zmiany hasła na koncie, którego poświadczenia mogły zostać przejęte. W przypadku potwierdzonego przejęcia należy również zablokować możliwość dalszego korzystania ze starego hasła.
+
+    \item \textbf{Unieważnienie aktywnych sesji} -- wylogowanie użytkownika ze wszystkich urządzeń oraz unieważnienie tokenów dostępowych i odświeżających. Sama zmiana hasła nie zawsze powoduje automatyczne zakończenie wszystkich istniejących sesji.
+
+    \item \textbf{Powiadomienie użytkownika} -- poinformowanie o podejrzanej aktywności, zmianie hasła lub wykrytym przejęciu konta. Użytkownik powinien otrzymać również wskazówki dotyczące zabezpieczenia innych usług, w których używał tego samego hasła.
+
+    \item \textbf{Analiza zakresu incydentu} -- sprawdzenie logów w celu ustalenia, jakie konta zostały zaatakowane, czy doszło do udanych logowań oraz czy atakujący wykonał dodatkowe operacje.
+
+    \item \textbf{Usunięcie skutków ataku} -- sprawdzenie, czy nie dodano nieautoryzowanych metod odzyskiwania konta, nowych urządzeń, kluczy dostępowych lub innych mechanizmów umożliwiających ponowne uzyskanie dostępu.
+\end{enumerate}
+
+Najważniejszym elementem ochrony jest połączenie MFA, kontroli haseł oraz monitorowania logowań. Żaden z tych mechanizmów osobno nie gwarantuje pełnej ochrony, jednak ich jednoczesne zastosowanie znacząco utrudnia skuteczne przeprowadzenie credential stuffingu~\cite{owasp_cs,nist80063b,owasp_mfa}.
 
 \newpage
 
 \section{Podsumowanie i wnioski}
 
-TODO (osoba 3):
-- najwazniejsze ustalenia
-- ocena skutecznosci zabezpieczen
-- ktory etap najlatwiej przerwac
-- ktore zabezpieczenie daje najwiekszy efekt
-- jak sprawdzic czy ochrona dziala
+Credential stuffing stanowi istotne zagrożenie dla bezpieczeństwa kont użytkowników i usług internetowych. Jego skuteczność wynika przede wszystkim z powszechnego ponownego wykorzystywania haseł w różnych serwisach oraz łatwej dostępności danych pochodzących z wcześniejszych wycieków. W przeciwieństwie do klasycznego brute force atakujący nie musi zgadywać haseł, ponieważ dysponuje już konkretnymi parami login--hasło.
+
+Na podstawie przeprowadzonej analizy można sformułować następujące wnioski:
+
+\begin{itemize}
+    \item \textbf{Najważniejszym czynnikiem umożliwiającym atak jest ponowne wykorzystywanie haseł.} Nawet dobrze zabezpieczony serwis może stać się celem credential stuffingu, jeśli jego użytkownicy wykorzystują w nim poświadczenia ujawnione wcześniej w innym miejscu.
+
+    \item \textbf{Skutki ataku wykraczają poza samo przejęcie konta.} Atakujący może uzyskać dostęp do danych osobowych, informacji prywatnych i funkcjonalności dostępnych dla użytkownika. W zależności od rodzaju usługi może to prowadzić do strat finansowych, naruszenia prywatności oraz utraty zaufania do organizacji.
+
+    \item \textbf{Skuteczność zabezpieczeń zależy od ich warstwowego zastosowania.} MFA znacząco ogranicza możliwość wykorzystania samego hasła, natomiast kontrola haseł, rate limiting i monitoring pozwalają zmniejszyć liczbę skutecznych prób oraz szybciej wykrywać ataki.
+
+    \item \textbf{Wykrywanie rozproszonych prób logowania wymaga korelacji danych.} Ograniczenie monitorowania do pojedynczych adresów IP może być nieskuteczne, ponieważ atakujący mogą rozpraszać ruch pomiędzy wiele źródeł.
+\end{itemize}
+
+\subsection{Najłatwiejszy etap do przerwania}
+
+Najłatwiejszym etapem do przerwania jest próba wykorzystania skradzionych poświadczeń do uwierzytelnienia. Na tym etapie organizacja ma bezpośrednią kontrolę nad mechanizmami logowania i może zastosować dodatkowe zabezpieczenia, takie jak MFA, sprawdzanie haseł w bazach wycieków czy ograniczanie liczby prób.
+
+Szczególnie istotne jest MFA, ponieważ pozwala przerwać atak nawet wtedy, gdy atakujący dysponuje prawidłową parą login--hasło. Nie wymaga to również wcześniejszego wykrycia źródła wycieku danych.
+
+\subsection{Najskuteczniejsze zabezpieczenie}
+
+Za jedno z najskuteczniejszych zabezpieczeń należy uznać uwierzytelnianie wieloskładnikowe, szczególnie w postaci odpornej na phishing, np. FIDO2 lub passkeys. Wynika to z faktu, że credential stuffing opiera się na wykorzystaniu skradzionych haseł, a dodatkowy składnik uwierzytelnienia stanowi barierę dla atakującego.
+
+Nie oznacza to jednak, że MFA powinno być jedynym stosowanym zabezpieczeniem. Powinno być uzupełnione przez kontrolę haseł, mechanizmy ograniczania prób logowania oraz monitorowanie podejrzanej aktywności.
+
+\subsection{Weryfikacja skuteczności ochrony}
+
+Skuteczność wdrożonych zabezpieczeń można sprawdzać poprzez regularne audyty konfiguracji oraz kontrolowane testy bezpieczeństwa wykonywane w środowisku testowym lub na kontach testowych. Weryfikacja powinna obejmować następujące elementy:
+
+\begin{itemize}
+    \item sprawdzenie, czy logowanie wymaga dodatkowego składnika uwierzytelnienia;
+    \item sprawdzenie, czy system odrzuca hasła znajdujące się w znanych bazach wycieków;
+    \item weryfikację działania ograniczeń liczby prób logowania;
+    \item sprawdzenie, czy system rejestruje i wykrywa nietypowe wzorce logowań;
+    \item sprawdzenie, czy po zmianie hasła lub wykryciu przejęcia konta można unieważnić wszystkie aktywne sesje;
+    \item ocenę czasu potrzebnego na wykrycie podejrzanej aktywności i podjęcie reakcji.
+\end{itemize}
+
+Warto również monitorować wskaźniki takie jak liczba podejrzanych prób logowania, liczba zablokowanych uwierzytelnień, liczba przejętych kont oraz czas od wystąpienia incydentu do jego wykrycia.
+
+Podsumowując, credential stuffing jest zagrożeniem, którego nie można wyeliminować wyłącznie poprzez zwiększenie złożoności haseł. Skuteczna ochrona wymaga stosowania dodatkowych metod uwierzytelniania, kontroli poświadczeń oraz ciągłego monitorowania aktywności. Największą skuteczność zapewnia podejście wielowarstwowe, w którym nawet przejęcie hasła nie oznacza automatycznie przejęcia konta.
 
 \newpage
 \section{Spis literatury}
