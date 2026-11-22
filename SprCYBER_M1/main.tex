@@ -151,14 +151,45 @@ Initial Access / Persistence & T1078 Valid Accounts &
 Centralna jest technika T1110.004 z taktyki \emph{Credential Access}. Pozostałe pozycje opisują działania przed atakiem i po nim, co pokazuje, że credential stuffing jest zwykle jednym z etapów dłuższego łańcucha, a nie celem samym w sobie.
 
 \subsection{Scenariusz ataku i przykład: 23andMe (2023)}
-TODO (osoba 2):
-- opisac 23andMe: zasob -> sposbo wejscia -> dzialanie atakujacego -> skutek -> wykrycie -> reakcja
-- nalezy pamietac o podaniu źródel bo na platfomie pisali zeby podawać pozdrawiam
+
+W październiku 2023 roku firma 23andMe, oferująca komercyjne badania genetyczne, padła ofiarą głośnego incydentu bezpieczeństwa, w wyniku którego doszło do masowego wycieku danych użytkowników. Przebieg tego ataku przebiegał według następującego schematu \cite{wiki23, sec23}:
+
+\begin{itemize}
+    \item \textbf{Zasób:} Baza kont użytkowników platformy oraz powiązana z nią funkcja społecznościowa \textit{DNA Relatives}, umożliwiająca odnajdywanie i łączenie krewnych na podstawie podobieństwa genetycznego \cite{wiki23, sec23}.
+    \item \textbf{Sposób wejścia:} Atakujący wykorzystali technikę \textit{credential stuffing}, polegającą na automatycznym testowaniu na platformie 23andMe loginów i haseł, które wyciekły wcześniej z innych serwisów internetowych \cite{owasp, wiki23}.
+    \item \textbf{Działanie atakującego:} Po uzyskaniu nieautoryzowanego dostępu do około 14 tysięcy kont (których właściciele stosowali te same hasła w różnych usługach), sprawcy wykorzystali funkcję \textit{DNA Relatives}. Pozwoliło im to na masowe zautomatyzowane pobieranie (tzw. \textit{scraping}) danych osobowych i genealogicznych wszystkich osób połączonych z przejętymi profilami. Działania te były ukierunkowane m.in. na użytkowników pochodzenia żydowskiego (aszkenazyjskiego) oraz chińskiego \cite{wiki23, sec23}.
+    \item \textbf{Skutek:} Wyciek objął łącznie dane około \textbf{6,9 miliona} użytkowników. Ujawnione informacje zawierały m.in. imiona i nazwiska, rok urodzenia, płeć, dane o pochodzeniu etnicznym, drzewa genealogiczne oraz stopień pokrewieństwa \cite{sec23, wiki23}.
+    \item \textbf{Wykrycie:} Incydent został wykryty w październiku 2023 roku, kiedy próbki skradzionych baz danych zaczęły być publikowane i oferowane na sprzedaż na forach hakerskich \cite{wiki23}.
+    \item \textbf{Reakcja:} W odpowiedzi na incydent firma wymusiła reset haseł dla wszystkich użytkowników oraz wprowadziła obowiązkowe uwierzytelnianie dwuskładnikowe (2FA), aby zablokować możliwość dalszego wykorzystywania skradzionych poświadczeń \cite{wiki23}.
+\end{itemize}
 
 \subsection{Skutki}
-TODO (osoba 2):
-- ocena w modelu CIA (poufność, integralnosc, dostpenosc)
-- skutki techniczne, organizacyjne, finansowe, prawne, wizerunkowe
+
+Analiza incydentu w oparciu o triadę bezpieczeństwa informacji (model CIA) pokazuje selektywny charakter naruszenia \cite{wiki23, sec23}:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{p{3cm} p{2.5cm} p{8.5cm}}
+        \toprule
+        \textbf{Właściwość} & \textbf{Naruszona?} & \textbf{Uzasadnienie} \\
+        \midrule
+        Poufność & \textbf{Tak} & Doszło do nieuprawnionego ujawnienia wrażliwych danych osobowych, demograficznych i genetycznych 6,9 mln osób \cite{sec23}. \\
+        Integralność & \textbf{Nie} & Dane w bazach 23andMe nie zostały zmodyfikowane, sfałszowane ani usunięte – atakujący jedynie je skopiowali \cite{wiki23}. \\
+        Dostępność & \textbf{Nie} & Serwis i jego usługi pozostały w pełni dostępne dla użytkowników przez cały czas trwania incydentu (nie był to atak typu DoS ani ransomware) \cite{sec23}. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Ocena skutków wycieku danych 23andMe w modelu CIA.}
+\end{table}
+
+Poza bezpośrednim naruszeniem poufności, incydent wywołał szereg długofalowych konsekwencji dla przedsiębiorstwa:
+
+\begin{itemize}
+    \item \textbf{Skutki techniczne:} Konieczność pilnej przebudowy mechanizmów uwierzytelniania (wdrożenie obowiązkowego 2FA) oraz nałożenia limitów zapytań i dodatkowej kontroli dostępu do funkcji \textit{DNA Relatives}, aby zapobiec automatycznemu pobieraniu danych \cite{wiki23}.
+    \item \textbf{Skutki organizacyjne:} Zaostrzenie wewnętrznych procedur reagowania na incydenty, przeprowadzenie zewnętrznych audytów bezpieczeństwa oraz powołanie specjalnych zespołów do obsługi roszczeń i komunikacji kryzysowej \cite{sec23}.
+    \item \textbf{Skutki finansowe:} Drastyczny spadek wartości akcji spółki na giełdzie (o ponad 90\% względem szczytowych wycen), wysokie koszty obsługi prawnej i audytów, a także konieczność zawarcia ugody w ramach pozwów zbiorowych w USA na kwotę 30 milionów dolarów \cite{sec23}.
+    \item \textbf{Skutki prawne:} Naruszenie przepisów o ochronie danych osobowych (w tym RODO oraz brytyjskiego UK GDPR), co skutkowało wszczęciem oficjalnych dochodzeń przez organy nadzorcze (m.in. brytyjskie ICO i kanadyjskie OPC) oraz nałożeniem kar finansowych za niewystarczające zabezpieczenie danych wrażliwych \cite{sec23}.
+    \item \textbf{Skutki wizerunkowe:} Trwała utrata zaufania klientów. Ze względu na fakt, że danych genetycznych (w przeciwieństwie do hasła czy numeru karty płatniczej) nie da się zmienić, kryzys reputacyjny doprowadził do masowego usuwania kont przez użytkowników i załamania modelu biznesowego firmy \cite{wiki23}.
+\end{itemize}
 
 \subsection{Sposoby wykrywania}
 
