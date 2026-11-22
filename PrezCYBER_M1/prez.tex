@@ -249,47 +249,74 @@
 % =====================================================================
 % OSOBA 3 — wykrywanie, zabezpieczenia, wnioski
 % =====================================================================
+
 \section{Wykrywanie i zabezpieczenia}
+
 \begin{frame}{Jak wykryć atak?}
-    \kto{Osoba 3}
-    \dozrobienia{Sygnały w logach: wiele nieudanych logowań na wiele kont, wiele adresów IP,
-    nietypowe lokalizacje, ruch z sieci anonimizujących.}
+    \kto{Bartłomiej Łokaj}
+    \begin{itemize}
+        \item Wiele nieudanych logowań na różne konta w krótkim czasie.
+        \item Próby logowania z wielu adresów IP.
+        \item Nietypowe lokalizacje i urządzenia.
+        \item Ruch z sieci anonimizujących, np. TOR i proxy.
+        \item Nagły wzrost udanych logowań po serii niepowodzeń.
+    \end{itemize}
+    \vspace{0.2cm}
+    \textbf{Wykrywanie:} analiza logów, systemy SIEM i monitorowanie anomalii w zachowaniu użytkowników (UEBA).
 \end{frame}
 
 \begin{frame}{Proponowane zabezpieczenia}
-    \kto{Osoba 3}
+    \kto{Bartłomiej Łokaj}
     \begin{columns}[T]
         \column{0.32\textwidth}
         \textbf{Zapobieganie}
         \begin{itemize}\small
-            \item Uzupełnij
+            \item MFA / passkeys
+            \item Blokowanie haseł z wycieków
+            \item Limity prób logowania
+            \item Menedżery haseł
         \end{itemize}
+
         \column{0.32\textwidth}
         \textbf{Detekcja}
         \begin{itemize}\small
-            \item Uzupełnij
+            \item Analiza logów
+            \item Wykrywanie anomalii
+            \item Monitorowanie IP i lokalizacji
+            \item SIEM / UEBA
         \end{itemize}
+
         \column{0.32\textwidth}
         \textbf{Reakcja}
         \begin{itemize}\small
-            \item Uzupełnij
+            \item Wymuszenie zmiany hasła
+            \item Unieważnienie sesji
+            \item Powiadomienie użytkowników
+            \item Analiza przejętych kont
         \end{itemize}
     \end{columns}
     \vspace{0.3cm}
-    \dozrobienia{MFA, sprawdzanie haseł w bazach wycieków, limity prób, CAPTCHA,
-    menedżery haseł; reakcja: reset haseł, unieważnienie sesji, powiadomienie użytkowników.}
+    \centering
+    \textbf{Najważniejsze:} nawet skradzione hasło nie powinno wystarczyć do przejęcia konta.
 \end{frame}
 
 \section{Wnioski}
+
 \begin{frame}{Wnioski zespołu}
-    \kto{Osoba 3 + zespół}
+    \kto{Bartłomiej Łokaj}
     \begin{enumerate}
-        \item Który etap ataku najłatwiej przerwać?
-        \item Które zabezpieczenie daje największy efekt?
-        \item Jak sprawdzić, czy ochrona działa?
-        \item Jakie są ograniczenia naszej analizy?
+        \item \textbf{Najłatwiejszy etap do przerwania:}
+        próba logowania -- można wymagać dodatkowego uwierzytelnienia.
+
+        \item \textbf{Największy efekt:}
+        MFA, szczególnie odporne na phishing (FIDO2 / passkeys).
+
+        \item \textbf{Weryfikacja ochrony:}
+        kontrolowane testy, sprawdzanie limitów logowania, MFA i poprawności alertów.
+
+        \item \textbf{Ograniczenia analizy:}
+        korzystaliśmy ze źródeł publicznych, bez testowania rzeczywistych systemów.
     \end{enumerate}
-    \dozrobienia{Odpowiedzi na powyższe pytania i rekomendacje zespołu.}
 \end{frame}
 
 \section{Źródła}
@@ -298,26 +325,27 @@
     \begin{thebibliography}{99}
         \bibitem{owasp} OWASP Foundation, \emph{Credential stuffing},
             \url{https://owasp.org/www-community/attacks/Credential_stuffing}.
+
         \bibitem{owaspcs} OWASP Foundation, \emph{Credential Stuffing Prevention Cheat Sheet},
             \url{https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html}.
+
         \bibitem{mitre} MITRE, \emph{ATT\&CK: Brute Force: Credential Stuffing (T1110.004)},
             \url{https://attack.mitre.org/techniques/T1110/004/}.
-        \bibitem{verizon} P.~Langlois, \emph{Additional 2025 DBIR research on credential stuffing},
+
+        \bibitem{verizon} P. Langlois, \emph{Additional 2025 DBIR research on credential stuffing},
             Verizon Business, 2025.
+
         \bibitem{okta} Help Net Security, \emph{Okta warns customers about credential stuffing
             onslaught}, 29.04.2024.
-        % TODO osoba 2 i 3: dopisać swoje źródła
+
+        \bibitem{nist} NIST, \emph{Digital Identity Guidelines: Authentication and Authenticator Management},
+            \url{https://pages.nist.gov/800-63-4/sp800-63b.html}.
+
+        \bibitem{owaspmfa} OWASP Foundation, \emph{Multifactor Authentication Cheat Sheet},
+            \url{https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html}.
     \end{thebibliography}
 \end{frame}
 
-\begin{frame}{Pytania i dyskusja}
-    \centering
-    {\LARGE\color{CyberBurgundy} Pytania?}
-    \vspace{0.6cm}
-
-    {\large Zapraszamy do dyskusji.}
-    % tak naprawde to nie
-\end{frame}
 
 \begin{frame}[plain]
     \centering
