@@ -1,0 +1,130 @@
+x-wp-db-env: &wp-db-env
+  WORDPRESS_DB_HOST: db:3306
+  WORDPRESS_DB_NAME: ${WP_DB_NAME}
+  WORDPRESS_DB_USER: ${WP_DB_USER}
+  WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD}
+  WORDPRESS_CONFIG_EXTRA: |
+    if (!empty($$_SERVER['HTTP_HOST'])) {
+      define('WP_HOME', 'http://' . $$_SERVER['HTTP_HOST']);
+      define('WP_SITEURL', 'http://' . $$_SERVER['HTTP_HOST']);
+    }
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${WP_DB_NAME}
+      MARIADB_USER: ${WP_DB_USER}
+      MARIADB_PASSWORD: ${WP_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  wordpress:
+    image: wordpress:6-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *wp-db-env
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - internal
+
+  wp-setup:
+    image: wordpress:cli
+    user: "33:33"
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+    environment:
+      <<: *wp-db-env
+      HOME: /tmp
+      WP_URL: ${WP_URL:-http://localhost}
+      WP_TITLE: ${WP_TITLE:-Lab CrowdSec}
+      WP_ADMIN_USER: ${WP_ADMIN_USER}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.com}
+    volumes:
+      - wp_data:/var/www/html
+      - ./wp-setup:/setup:ro
+    entrypoint: ["sh", "/setup/setup.sh"]
+    networks:
+      - internal
+
+  nginx:
+    build: ./nginx
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+      - crowdsec
+    environment:
+      CROWDSEC_LAPI_URL: "http://crowdsec:8080"
+      CROWDSEC_BOUNCER_KEY: ${BOUNCER_KEY}
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # access.log needed for crowdsec
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - internal
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    restart: always
+    environment:
+      COLLECTIONS: "crowdsecurity/nginx crowdsecurity/wordpress crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules crowdsecurity/appsec-crs-inband crowdsecurity/appsec-crs-exclusion-plugin-wordpress"
+      GID: "1000"
+      DISABLE_PARSERS: "crowdsecurity/whitelists"
+      BOUNCER_KEY_nginx: ${BOUNCER_KEY}
+    volumes:
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+      - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d
+      - ./nginx/logs:/var/log/nginx
+      - crowdsec-db:/var/lib/crowdsec/data/
+      - crowdsec-cfg:/etc/crowdsec/
+    healthcheck:
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internal
+  attacker:
+    image: nicolaka/netshoot
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - nginx
+    volumes:
+      - ./attacker:/tools
+    networks:
+      - internal
+    entrypoint: ["sleep", "infinity"]
+
+volumes:
+  db_data:
+  wp_data:
+  crowdsec-db:
+  crowdsec-cfg:
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: 10.11.0.0/16
