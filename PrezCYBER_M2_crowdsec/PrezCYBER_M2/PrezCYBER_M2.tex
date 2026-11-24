@@ -1,0 +1,552 @@
+\documentclass[aspectratio=169,xcolor=dvipsnames]{beamer}
+\usetheme{Simple}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
+
+\definecolor{CyberBlue}{HTML}{2464AD}
+\definecolor{CyberNavy}{HTML}{173D70}
+\definecolor{CyberPale}{HTML}{E8F2FC}
+\definecolor{CyberText}{HTML}{292525}
+\definecolor{CyberRed}{HTML}{B23A3A}
+\definecolor{CyberGreen}{HTML}{2E7D5B}
+
+% Nadpisanie barw motywu Simple
+\setbeamercolor{normal text}{fg=CyberText,bg=white}
+\setbeamercolor{structure}{fg=CyberBlue}
+\setbeamercolor{title}{fg=white}
+\setbeamercolor{subtitle}{fg=white}
+\setbeamercolor{frametitle}{fg=CyberNavy,bg=white}
+\setbeamercolor{section in toc}{fg=CyberNavy}
+\setbeamercolor{item}{fg=CyberBlue}
+\setbeamercolor{subitem}{fg=CyberBlue}
+\setbeamercolor{enumerate item}{fg=CyberBlue}
+\setbeamercolor{alerted text}{fg=CyberBlue}
+\setbeamercolor{block title}{fg=white,bg=CyberNavy}
+\setbeamercolor{block body}{fg=CyberText,bg=CyberPale}
+\setbeamercolor{block title alerted}{fg=white,bg=CyberBlue}
+\setbeamercolor{block body alerted}{fg=CyberText,bg=CyberPale}
+\setbeamercolor{block title example}{fg=white,bg=CyberNavy}
+\setbeamercolor{block body example}{fg=CyberText,bg=CyberPale}
+\setbeamercolor{palette primary}{fg=white,bg=CyberBlue}
+\setbeamercolor{palette secondary}{fg=white,bg=CyberNavy}
+\setbeamercolor{palette tertiary}{fg=white,bg=CyberNavy}
+\setbeamercolor{footline}{fg=CyberNavy,bg=white}
+\setbeamercolor{navigation symbols}{fg=CyberBlue}
+\hypersetup{colorlinks=true,urlcolor=CyberBlue,linkcolor=CyberNavy,citecolor=CyberBlue}
+
+% Listingi (kod bez polskich znaków)
+\lstdefinestyle{cyber}{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{CyberBlue}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{CyberGreen},
+  backgroundcolor=\color{CyberPale},
+  frame=single, rulecolor=\color{CyberBlue!40},
+  framesep=3pt, xleftmargin=4pt, xrightmargin=4pt,
+  showstringspaces=false, columns=fullflexible, keepspaces=true,
+  breaklines=true
+}
+\lstset{style=cyber}
+
+% Znacznik miejsc do uzupełnienia po testach
+\newcommand{\todo}[1]{\textcolor{CyberRed}{\textbf{[TODO:} #1\textbf{]}}}
+
+% Podpis slajdu: kto omawia
+\newcommand{\kto}[1]{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, fill=CyberPale, draw=CyberBlue!50, rounded corners=2pt,
+          font=\tiny, text=CyberNavy, inner sep=2pt]
+      at ([xshift=4mm,yshift=1mm]current page.south west)
+      {\textbf{#1}};
+  \end{tikzpicture}}
+
+% Diagramy
+\tikzset{
+  box/.style={draw=CyberNavy, fill=CyberPale, rounded corners=3pt, thick,
+              align=center, font=\scriptsize, inner sep=4pt, minimum height=0.9cm},
+  hot/.style={box, draw=CyberRed, fill=CyberRed!8},
+  arr/.style={-{Stealth[length=2mm]}, thick, CyberNavy},
+  lbl/.style={font=\tiny, text=CyberText, align=center}
+}
+
+\title[CrowdSec -- ochrona WordPressa]{Ochrona aplikacji webowej przed atakami HTTP\\z użyciem CrowdSec (IPS + WAF AppSec)}
+\subtitle{Cyberbezpieczeństwo -- Moduł 2: Ochrona}
+\author[D. Pągowski, OSOBA 2, OSOBA 3]{Dawid Pągowski \and OSOBA 2 \and OSOBA 3}
+\institute[PŚ]{Wydział Matematyki Stosowanej\\Politechnika Śląska}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{Plan prezentacji}
+    \tableofcontents
+\end{frame}
+
+% =====================================================================
+\section{Wprowadzenie}
+% =====================================================================
+
+\begin{frame}{Problem: zagrożenie i chroniony zasób}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \begin{block}{Chroniony zasób}
+            \textbf{WordPress 6} za nginx (reverse proxy) + MariaDB.
+        \end{block}
+        \begin{block}{Scenariusze zagrożeń}
+            \begin{itemize}\small
+                \item skanowanie i rekonesans (pliki wrażliwe, panele admina),
+                \item brute force logowania (\texttt{wp-login.php}),
+                \item ataki na treść żądań: SQLi, XSS, path traversal,
+                \item exploity znanych CVE.
+            \end{itemize}
+        \end{block}
+        \column{0.46\textwidth}
+        \begin{exampleblock}{Kryteria oceny}
+            \begin{itemize}\small
+                \item \textbf{wykrycie} -- alert w CrowdSec,
+                \item \textbf{zablokowanie} -- odpowiedź 403 / ban IP,
+                \item \textbf{skuteczność ataku} w wariancie bez i z ochroną,
+                \item \textbf{czas / liczba żądań} do bana,
+                \item \textbf{brak false positive} dla zwykłego ruchu.
+            \end{itemize}
+        \end{exampleblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Podział pracy w zespole}
+    \begin{columns}[T]
+        \column{0.32\textwidth}
+        \begin{block}{Dawid Pągowski}
+            \small
+            \begin{itemize}
+                \item przegląd rozwiązań i wybór CrowdSec,
+                \item środowisko \texttt{docker compose},
+                \item konfiguracja CrowdSec, bouncera i AppSec,
+                \item problemy i ograniczenia.
+            \end{itemize}
+        \end{block}
+        \column{0.32\textwidth}
+        \begin{block}{OSOBA 2}
+            \small
+            \begin{itemize}
+                \item \textbf{atak: SQL injection} -- własny skrypt,
+                \item test z wyłączonym i włączonym CrowdSec.
+            \end{itemize}
+        \end{block}
+        \column{0.32\textwidth}
+        \begin{block}{OSOBA 3}
+            \small
+            \begin{itemize}
+                \item \textbf{atak: brute force logowania WordPress} -- własny skrypt,
+                \item test z wyłączonym i włączonym CrowdSec.
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+% =====================================================================
+\section{Przegląd rozwiązań i wybór}
+% =====================================================================
+
+\begin{frame}{Przegląd dostępnych rozwiązań}
+    \kto{Dawid Pągowski}
+    \scriptsize
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.3cm} Y c c l Y@{}}
+        \toprule
+        \textbf{Rozwiązanie} & \textbf{Zasada działania} & \textbf{WAF} & \textbf{Reputacja IP} & \textbf{Licencja} & \textbf{Główne ograniczenie} \\
+        \midrule
+        fail2ban & wyrażenia regularne na logach $\rightarrow$ ban w zaporze (iptables/nftables) & -- & -- & GPL-2.0 & nie widzi treści żądań, działa po fakcie, lokalny \\
+        ModSecurity / Coraza + OWASP CRS & reguły inspekcji każdego żądania (WAF); Coraza -- następca w Go & \checkmark & -- & Apache-2.0 & brak analizy behawioralnej, wymaga tuningu (false positive) \\
+        \textbf{CrowdSec} & scenariusze na logach + AppSec (WAF) + bouncery & \checkmark & \checkmark & MIT (silnik) & fail-open, część funkcji w płatnej konsoli \\
+        WAF chmurowy (np. Cloudflare) & proxy u dostawcy & \checkmark & \checkmark & płatny / freemium & nie da się przetestować w izolowanym labie \\
+        \bottomrule
+    \end{tabularx}
+\end{frame}
+
+\begin{frame}{fail2ban vs CrowdSec}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \begin{block}{fail2ban}
+            \small
+            \begin{itemize}
+                \item \emph{jail} = filtr (regex) + akcja (ban w firewallu),
+                \item prosty, sprawdzony, minimalne zasoby,
+                \item jedna maszyna -- brak współdzielenia wiedzy,
+                \item tylko analiza logów: każdy atak musi najpierw \emph{dotrzeć} do aplikacji,
+                \item brak inspekcji treści żądań -- pojedynczy udany SQLi nie zostanie zatrzymany.
+            \end{itemize}
+        \end{block}
+        \column{0.48\textwidth}
+        \begin{block}{CrowdSec}
+            \small
+            \begin{itemize}
+                \item parsery + scenariusze (\emph{leaky bucket}) zamiast regexów,
+                \item gotowe kolekcje z Hub (nginx, WordPress, CVE),
+                \item rozdzielenie detekcji (agent/LAPI) od egzekucji (bouncer),
+                \item \textbf{AppSec} -- blokada \emph{w trakcie} żądania (virtual patching, reguły generyczne),
+                \item blocklisty społeczności (reputacja IP).
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Uzasadnienie wyboru: CrowdSec}
+    \kto{Dawid Pągowski}
+    \begin{block}{Dlaczego CrowdSec}
+        \begin{itemize}
+            \item jako jedyne darmowe rozwiązanie łączy \textbf{detekcję behawioralną} (jak fail2ban) z \textbf{inspekcją żądań} (jak WAF) -- dwie warstwy obrony w jednym narzędziu,
+            \item gotowe scenariusze dla nginx i WordPressa -- mniej własnych reguł do utrzymania,
+            \item bouncer w nginx blokuje na poziomie HTTP (403), a nie tylko IP w zaporze,
+            \item działa w kontenerach -- powtarzalne, izolowane środowisko laboratoryjne,
+            \item licencja MIT, aktywna dokumentacja i społeczność.
+        \end{itemize}
+    \end{block}
+    \begin{alertblock}{Czego się spodziewamy}
+        Pozwala porównać obie warstwy na tym samym ruchu: AppSec (pojedyncze żądanie) vs scenariusze (seria zdarzeń).
+    \end{alertblock}
+\end{frame}
+
+% =====================================================================
+\section{Charakterystyka rozwiązania ochronnego}
+% =====================================================================
+
+\begin{frame}{Zasada działania CrowdSec}
+    \kto{Dawid Pągowski}
+    \centering
+    \begin{tikzpicture}[node distance=0.45cm and 0.45cm]
+        % Ścieżka detekcji z logów
+        \node[box] (log) {Logi\\nginx};
+        \node[box, right=of log] (parse) {Parsery\\(s00--s02)};
+        \node[box, right=of parse] (scen) {Scenariusze\\\emph{leaky bucket}};
+        \node[box, right=0.7cm of scen] (lapi) {LAPI\\decyzja: ban};
+        \node[box, right=of lapi] (bouncer) {Bouncer\\(nginx + Lua)};
+        \draw[arr] (log) -- (parse);
+        \draw[arr] (parse) -- (scen);
+        \draw[arr] (scen) -- node[lbl, below=1pt]{alert} (lapi);
+        \draw[arr] (bouncer) to[bend right=35] node[lbl, above]{czy IP ma bana?} (lapi);
+        % Ścieżka AppSec
+        \node[hot, below=1.3cm of bouncer] (appsec) {AppSec\\(reguły WAF)};
+        \node[box, left=of appsec, xshift=-1.3cm] (resp) {403 albo przekazanie\\do aplikacji};
+        \draw[arr, dashed] (bouncer) -- node[lbl, right]{każde żądanie\\(in-band)} (appsec);
+        \draw[arr] (appsec) -- node[lbl, above]{werdykt} (resp);
+        % Opisy warstw
+        \node[lbl, above=0.15cm of parse, xshift=1.1cm, font=\scriptsize\bfseries, text=CyberNavy] {detekcja behawioralna (po fakcie)};
+        \node[lbl, below=0.15cm of resp, xshift=1.6cm, font=\scriptsize\bfseries, text=CyberRed] {inspekcja żądania (zanim dotrze do aplikacji)};
+    \end{tikzpicture}
+    \vspace{0.2cm}
+
+    \small Detekcja (agent, LAPI) i egzekucja (bouncer) są rozdzielone -- jeden agent może zasilać wiele bouncerów.
+\end{frame}
+
+\begin{frame}{Rozwiązanie, ograniczenia, zastosowanie}
+    \kto{Dawid Pągowski}
+    \begin{block}{Rozwiązanie}
+        \small CrowdSec 1.x w kontenerze: kolekcje \texttt{crowdsecurity/nginx}, \texttt{crowdsecurity/wordpress}, \texttt{appsec-virtual-patching}, \texttt{appsec-generic-rules}; bouncer \texttt{crowdsec-nginx-bouncer} (moduł Lua) z włączonym AppSec.
+    \end{block}
+    \begin{alertblock}{Ograniczenia}
+        \small Scenariusze reagują dopiero po serii zdarzeń; bouncer działa \emph{fail-open}; nie chroni przed błędami logiki aplikacji ani logowaniem poprawnym (wykradzionym) hasłem.
+    \end{alertblock}
+    \begin{exampleblock}{Przykład zastosowania}
+        \small Publiczny WordPress: AppSec odcina znane exploity od pierwszego żądania, scenariusze banują skanery i brute force.
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Architektura środowiska testowego}
+    \kto{Dawid Pągowski}
+    \centering
+    \begin{tikzpicture}[node distance=0.55cm and 0.9cm]
+        \node[hot] (att) {\textbf{attacker}\\nicolaka/netshoot\\(narzędzia ataku)};
+        \node[box, right=of att] (ngx) {\textbf{nginx}\\Debian + Lua\\bouncer, :80};
+        \node[box, right=of ngx] (wp) {\textbf{wordpress}\\6-apache};
+        \node[box, right=of wp] (db) {\textbf{db}\\MariaDB 11};
+        \node[box, below=1.0cm of ngx, minimum width=3.2cm] (cs) {\textbf{crowdsec}\\agent + LAPI :8080\\AppSec :7422};
+        \draw[arr] (att) -- node[lbl, above]{HTTP} (ngx);
+        \draw[arr] (ngx) -- (wp);
+        \draw[arr] (wp) -- (db);
+        \draw[arr] ([xshift=-4mm]ngx.south) -- node[lbl, left]{access.log\\(wolumen)} ([xshift=-4mm]cs.north);
+        \draw[arr, {Stealth[length=2mm]}-{Stealth[length=2mm]}] ([xshift=4mm]ngx.south) -- node[lbl, right]{decyzje,\\AppSec} ([xshift=4mm]cs.north);
+        \begin{scope}[on background layer]
+            \node[draw=CyberBlue, dashed, rounded corners, fit=(att)(ngx)(wp)(db)(cs), inner sep=8pt,
+                  label={[font=\tiny, text=CyberBlue]below right:sieć Docker \texttt{internal} 10.11.0.0/16}] {};
+        \end{scope}
+    \end{tikzpicture}
+    \vspace{0.15cm}
+
+    \small Całość w jednym \texttt{docker compose} -- izolowane środowisko, ataki wyłącznie na własne kontenery.
+\end{frame}
+
+\begin{frame}[fragile]{Konfiguracja: usługa CrowdSec w \texttt{docker compose}}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.55\textwidth}
+\begin{lstlisting}[language=bash]
+crowdsec:
+  image: crowdsecurity/crowdsec
+  environment:
+    COLLECTIONS: "crowdsecurity/nginx
+      crowdsecurity/wordpress
+      crowdsecurity/appsec-virtual-patching
+      crowdsecurity/appsec-generic-rules"
+    DISABLE_PARSERS: "crowdsecurity/whitelists"
+    BOUNCER_KEY_nginx: ${BOUNCER_KEY}
+  volumes:
+    - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+    - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d
+    - ./nginx/logs:/var/log/nginx
+  healthcheck:
+    test: ["CMD", "cscli", "lapi", "status"]
+\end{lstlisting}
+        \column{0.42\textwidth}
+        \small
+        \begin{itemize}
+            \item kolekcje z Hub instalowane przy starcie kontenera,
+            \item klucz bouncera rejestrowany automatycznie (\texttt{BOUNCER\_KEY\_nginx}),
+            \item logi nginx współdzielone przez wolumen,
+            \item \texttt{acquis.d} -- źródło logów + komponent AppSec (:7422),
+            \item healthcheck bazy (\texttt{healthcheck.sh --innodb\_initialized}) -- WordPress startuje dopiero po gotowości MariaDB.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Konfiguracja: nginx z bouncerem}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.55\textwidth}
+\begin{lstlisting}[language=bash]
+FROM debian:bookworm-slim
+RUN apt-get install -y nginx \
+      libnginx-mod-http-lua lua-cjson \
+      crowdsec-nginx-bouncer
+RUN sed -i 's|^APPSEC_URL=.*|APPSEC_URL=http://crowdsec:7422|' \
+    /etc/crowdsec/bouncers/crowdsec-nginx-bouncer.conf
+COPY docker_resolver.conf \
+     /etc/nginx/conf.d/00_docker_resolver.conf
+\end{lstlisting}
+\begin{lstlisting}
+# 00_docker_resolver.conf
+resolver 127.0.0.11 valid=30s ipv6=off;
+\end{lstlisting}
+        \column{0.42\textwidth}
+        \small
+        \begin{itemize}
+            \item bouncer działa jako moduł Lua w fazie \emph{access} -- każde żądanie sprawdzane przed przekazaniem do WordPressa,
+            \item adres LAPI i klucz przekazywane zmiennymi środowiskowymi,
+            \item AppSec wskazany na kontener \texttt{crowdsec},
+            \item \texttt{resolver} wymagany, bo Lua w nginx nie korzysta z \texttt{/etc/resolv.conf}.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Problemy napotkane podczas konfiguracji}
+    \kto{Dawid Pągowski}
+    \footnotesize
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm} Y Y@{}}
+        \toprule
+        \textbf{Objaw} & \textbf{Przyczyna} & \textbf{Rozwiązanie} \\
+        \midrule
+        \texttt{no resolver defined to resolve "crowdsec"} & cosockety Lua używają tylko dyrektywy \texttt{resolver} nginx & \texttt{resolver 127.0.0.11} (DNS Dockera) \\
+        \texttt{crowdsec could not be resolved (3: Host not found)} & kontenery w różnych sieciach Dockera & wspólna sieć \texttt{internal} \\
+        ataki z sieci 10.11.0.0/16 ignorowane & domyślny parser \texttt{crowdsecurity/whitelists} pomija adresy prywatne & \texttt{DISABLE\_PARSERS} \\
+        WordPress startuje przed bazą & MariaDB inicjalizuje się ok. 1 min & healthcheck + \texttt{condition: service\_healthy} \\
+        \bottomrule
+    \end{tabularx}
+    \vspace{0.1cm}
+
+    \footnotesize Przy dwóch pierwszych błędach bouncer \textbf{przepuszczał cały ruch}.
+\end{frame}
+
+% =====================================================================
+\section{Praca laboratoryjna i wyniki}
+% =====================================================================
+
+\begin{frame}{Realizacja eksperymentu}
+    \kto{Dawid Pągowski}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \begin{block}{Metoda}
+            \small
+            \begin{enumerate}
+                \item Każdy atak przygotowuje i wykonuje jedna osoba (własny skrypt).
+                \item \textbf{Wariant A} -- CrowdSec wyłączony (\texttt{docker compose stop crowdsec}).
+                \item \textbf{Wariant B} -- CrowdSec włączony.
+                \item Ataki z kontenera \texttt{attacker} w sieci laboratorium.
+                \item Dowody: kody HTTP, \texttt{cscli alerts list}, \texttt{cscli decisions list}.
+            \end{enumerate}
+        \end{block}
+        \column{0.46\textwidth}
+        \begin{alertblock}{Powtarzalność testów}
+            \small
+            \begin{itemize}
+                \item przed testem: \texttt{cscli decisions delete --all},
+                \item scenariusze mają \emph{blackhole} (kilka minut ignorowania IP po alercie) -- między powtórzeniami restart CrowdSec,
+                \item test zwykłego ruchu (przeglądanie, logowanie admina) -- false positive.
+            \end{itemize}
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Zaobserwowane ograniczenia}
+    \kto{Dawid Pągowski}
+    \begin{itemize}
+        \item \textbf{Fail-open} -- gdy bouncer nie może połączyć się z LAPI/AppSec, przepuszcza ruch; błąd konfiguracji DNS wyłączył całą ochronę bez widocznego objawu dla użytkownika.
+        \item \textbf{Detekcja po fakcie} -- scenariusz przepuszcza pierwsze $N$ żądań serii ($N$ = pojemność kubełka); żądania te docierają do aplikacji.
+        \item \textbf{Blackhole} -- po alercie dany scenariusz ignoruje IP przez kilka minut; po ręcznym zdjęciu bana ataki przechodzą.
+        \item \textbf{Zaufanie do sieci prywatnych} -- domyślnie atakujący z wnętrza sieci (np. przejęty host) jest pomijany.
+    \end{itemize}
+\end{frame}
+
+
+% ---------------- SQL injection (OSOBA 2) ----------------
+\begin{frame}{Atak 1: SQL injection -- przygotowanie}
+    \kto{OSOBA 2}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \begin{block}{Na czym polega atak}
+            \small Wstrzyknięcie fragmentu zapytania SQL w parametr lub pole formularza, aby odczytać lub zmienić dane w bazie.
+        \end{block}
+        \begin{block}{Która warstwa CrowdSec powinna zadziałać}
+            \small \textbf{AppSec} (reguły WAF) -- blokada już pierwszego żądania kodem 403.
+        \end{block}
+        \column{0.48\textwidth}
+        \begin{exampleblock}{Skrypt testowy}
+            \small
+            \todo{fragment własnego skryptu: adres celu, payloady, ile żądań}\\[4pt]
+            \todo{kryterium: co uznajemy za udany atak, a co za blokadę}
+        \end{exampleblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Atak 1: SQL injection -- wyniki}
+    \kto{OSOBA 2}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm} Y Y@{}}
+        \toprule
+        & \textbf{CrowdSec wyłączony} & \textbf{CrowdSec włączony} \\
+        \midrule
+        Kody odpowiedzi HTTP & \todo{} & \todo{} \\
+        Czy atak dotarł do aplikacji & \todo{} & \todo{} \\
+        Alert / reguła w CrowdSec & -- & \todo{nazwa reguły z \texttt{cscli alerts list}} \\
+        Ban adresu IP & -- & \todo{} \\
+        \bottomrule
+    \end{tabularx}
+    \vspace{0.3cm}
+
+    \todo{zrzuty z wynikami poleceń: \texttt{cscli alerts list}, \texttt{cscli alerts inspect <ID>}, \texttt{cscli decisions list}, \texttt{cscli metrics} oraz kodów HTTP ze skryptu -- dla obu wariantów; jedno zdanie wniosku}
+\end{frame}
+
+% ---------------- Brute force (OSOBA 3) ----------------
+\begin{frame}{Atak 2: brute force logowania WordPress -- przygotowanie}
+    \kto{OSOBA 3}
+    \begin{columns}[T]
+        \column{0.48\textwidth}
+        \begin{block}{Na czym polega atak}
+            \small Wielokrotne próby logowania do \texttt{wp-login.php} z różnymi hasłami, aż do trafienia poprawnego.
+        \end{block}
+        \begin{block}{Która warstwa CrowdSec powinna zadziałać}
+            \small \textbf{Scenariusz z logów} (\texttt{crowdsecurity/http-bf-wordpress\_bf}) -- ban IP po serii nieudanych prób.
+        \end{block}
+        \column{0.48\textwidth}
+        \begin{exampleblock}{Skrypt testowy}
+            \small
+            \todo{fragment własnego skryptu: login, lista haseł, odstęp między próbami}\\[4pt]
+            \todo{kryterium: po ilu próbach następuje ban}
+        \end{exampleblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Atak 2: brute force logowania WordPress -- wyniki}
+    \kto{OSOBA 3}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm} Y Y@{}}
+        \toprule
+        & \textbf{CrowdSec wyłączony} & \textbf{CrowdSec włączony} \\
+        \midrule
+        Liczba wykonanych prób & \todo{} & \todo{} \\
+        Próba, po której nastąpił ban & -- & \todo{} \\
+        Czas do bana & -- & \todo{} \\
+        Alert w CrowdSec & -- & \todo{nazwa scenariusza} \\
+        Wolne próby (np. co 30 s) & -- & \todo{czy wykryto?} \\
+        \bottomrule
+    \end{tabularx}
+    \vspace{0.3cm}
+
+    \todo{zrzuty z wynikami poleceń: \texttt{cscli alerts list}, \texttt{cscli alerts inspect <ID>}, \texttt{cscli decisions list}, \texttt{cscli metrics} oraz kodów HTTP ze skryptu -- dla obu wariantów; jedno zdanie wniosku}
+\end{frame}
+
+% =====================================================================
+\section{Wnioski}
+% =====================================================================
+
+\begin{frame}{Wnioski zespołu}
+    \kto{OSOBA 3}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \begin{block}{Ocena}
+            \small
+            \begin{itemize}
+                \item CrowdSec ogranicza rekonesans, brute force i znane exploity HTTP,
+                \item AppSec i scenariusze uzupełniają się: pojedyncze żądanie vs seria zdarzeń,
+                \item jeden pozytywny test nie oznacza pełnej ochrony -- skuteczność zależy od konfiguracji i progów,
+                \item \todo{potwierdzić wynikami testów}
+            \end{itemize}
+        \end{block}
+        \column{0.46\textwidth}
+        \begin{exampleblock}{Rekomendacje przed wdrożeniem}
+            \small
+            \begin{itemize}
+                \item monitoring samego CrowdSec (status LAPI, błędy bouncera),
+                \item świadoma decyzja fail-open / fail-close,
+                \item eskalacja czasu bana dla recydywistów (profile),
+                \item whitelista tylko dla adresów administratora,
+                \item obrona warstwowa: aktualizacje WP, MFA dla panelu, rate limiting w nginx, kopie zapasowe.
+            \end{itemize}
+        \end{exampleblock}
+    \end{columns}
+\end{frame}
+
+% =====================================================================
+\section{Źródła}
+% =====================================================================
+
+\begin{frame}{Bibliografia}
+    \kto{OSOBA 3}
+    \scriptsize
+    \begin{thebibliography}{99}
+        \bibitem{csdocs} CrowdSec, \emph{Documentation}, \url{https://docs.crowdsec.net/}.
+        \bibitem{csappsec} CrowdSec, \emph{AppSec Component}, \url{https://docs.crowdsec.net/docs/appsec/intro}.
+        \bibitem{csbouncer} CrowdSec, \emph{cs-nginx-bouncer}, \url{https://github.com/crowdsecurity/cs-nginx-bouncer}.
+        \bibitem{f2b} fail2ban, \url{https://github.com/fail2ban/fail2ban}.
+        \bibitem{modsec} OWASP, \emph{ModSecurity}, \url{https://github.com/owasp-modsecurity/ModSecurity}.
+        \bibitem{crs} OWASP, \emph{Core Rule Set}, \url{https://coreruleset.org/}.
+        \bibitem{coraza} OWASP, \emph{Coraza WAF}, \url{https://coraza.io/}.
+        \bibitem{ngx} nginx, \emph{Module ngx\_http\_core\_module -- resolver}, \url{https://nginx.org/en/docs/http/ngx_http_core_module.html\#resolver}.
+        \bibitem{nist} NIST, \emph{Cybersecurity Framework 2.0}, \url{https://www.nist.gov/cyberframework}.
+        \bibitem{owasp} OWASP, \emph{Logging Cheat Sheet}, \url{https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html}.
+    \end{thebibliography}
+\end{frame}
+
+\begin{frame}[plain]
+    \centering
+    {\Huge\bfseries\color{CyberBlue} Dziękujemy!}
+\end{frame}
+
+\end{document}
